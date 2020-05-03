@@ -1,5 +1,5 @@
 ---
-name: PR build
+name: Primary build
 on:
   push:
     tags:
@@ -8,12 +8,55 @@ on:
       - master
   pull_request:
 jobs:
+  # We already run the current golangci-lint in tests, but here we test
+  # our GitHub action with the latest stable golangci-lint.
+  golangci-lint:
+    name: golangci-lint
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        golang:
+          - 1.13
+          - 1.14
+    steps:
+      - uses: actions/checkout@v2
+      - name: test
+        run: env
+      - name: Dump GitHub context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$GITHUB_CONTEXT"
+      - name: Dump job context
+        env:
+          JOB_CONTEXT: ${{ toJson(job) }}
+        run: echo "$JOB_CONTEXT"
+      - name: Dump steps context
+        env:
+          STEPS_CONTEXT: ${{ toJson(steps) }}
+        run: echo "$STEPS_CONTEXT"
+      - name: Dump runner context
+        env:
+          RUNNER_CONTEXT: ${{ toJson(runner) }}
+        run: echo "$RUNNER_CONTEXT"
+      - name: Dump strategy context
+        env:
+          STRATEGY_CONTEXT: ${{ toJson(strategy) }}
+        run: echo "$STRATEGY_CONTEXT"
+      - name: Dump matrix context
+        env:
+          MATRIX_CONTEXT: ${{ toJson(matrix) }}
+        run: echo "$MATRIX_CONTEXT"
+      - name: lint
+        uses: golangci/golangci-lint-action@v0.0.4
+        with:
+          INPUT_FORMAT: github-actions
+          INPUT_FLAGS: -v
   tests-on-windows:
+    needs: golangci-lint # run after golangci-lint action to not produce duplicated errors
     runs-on: windows-latest
     strategy:
       matrix:
         golang:
-          - 1.12
           - 1.13
           - 1.14
     steps:
@@ -24,13 +67,12 @@ jobs:
           go-version: ${{ matrix.golang }}
       - name: Run tests on Windows
         run: make.exe test
-        continue-on-error: true
   tests-on-unix:
+    needs: golangci-lint # run after golangci-lint action to not produce duplicated errors
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         golang:
-          - 1.12
           - 1.13
           - 1.14
         os:
@@ -45,6 +87,7 @@ jobs:
       - name: Run tests on Unix-like operating systems
         run: make test
   check_generated:
+    needs: golangci-lint # run after golangci-lint action to not produce duplicated errors
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2

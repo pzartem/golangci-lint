@@ -306,3 +306,9 @@ func (cl *ContextLoader) Load(ctx context.Context, linters []*linter.Config) (*l
 
 	return ret, nil
 }
+
+func (cl *ContextLoader) testGithubActions() {
+	a := 1
+	a = 2
+	cl.log.Infof("a is %d", a)
+}
